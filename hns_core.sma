@@ -23,6 +23,7 @@ public plugin_init()
     g_pResetMaxSpeed = RegisterHookChain(RG_CBasePlayer_ResetMaxSpeed, "CBasePlayer_ResetMaxSpeed", .post = false);
     RegisterHookChain(RG_CBasePlayer_GiveDefaultItems, "CBasePlayer_GiveDefaultItems", .post = false);
     RegisterHookChain(RG_CSGameRules_OnRoundFreezeEnd, "CSGameRules_OnRoundFreezeEnd");
+    RegisterHookChain(RG_CSGameRules_GiveC4, "CSGameRules_GiveC4", .post = false);
 
     g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
 }
@@ -58,6 +59,11 @@ public CBasePlayer_GiveDefaultItems(const player)
 public CSGameRules_OnRoundFreezeEnd()
 {
     DisableHookChain(g_pResetMaxSpeed);
+}
+
+public CSGameRules_GiveC4()
+{
+    return HC_SUPERCEDE;
 }
 
 new g_szConfigsDir[128];
