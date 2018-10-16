@@ -21,6 +21,7 @@ public plugin_init()
 
     register_event("HLTV", "CSGameRules_OnRoundFreezeStart", "a", "1=0", "2=0");
     g_pResetMaxSpeed = RegisterHookChain(RG_CBasePlayer_ResetMaxSpeed, "CBasePlayer_ResetMaxSpeed", .post = false);
+    RegisterHookChain(RG_CBasePlayer_GiveDefaultItems, "CBasePlayer_GiveDefaultItems", .post = false);
     RegisterHookChain(RG_CSGameRules_OnRoundFreezeEnd, "CSGameRules_OnRoundFreezeEnd");
 
     g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
@@ -32,7 +33,7 @@ public CSGameRules_OnRoundFreezeStart()
 }
 
 const Float: DEFAULT_MAXSPEED = 250.0;
-public CBasePlayer_ResetMaxSpeed(player)
+public CBasePlayer_ResetMaxSpeed(const player)
 {
     if (get_member(player, m_iTeam) == TEAM_TERRORIST) {
         set_entvar(player, var_maxspeed, DEFAULT_MAXSPEED);
@@ -40,6 +41,18 @@ public CBasePlayer_ResetMaxSpeed(player)
     }
     
     return HC_CONTINUE;
+}
+
+public CBasePlayer_GiveDefaultItems(const player)
+{
+    rg_give_item(player, "weapon_knife");
+
+    if (get_member(player, m_iTeam) == TEAM_TERRORIST) {
+        rg_give_item(player, "weapon_flashbang");
+        rg_give_item(player, "weapon_smokegrenade");
+    }
+
+    return HC_SUPERCEDE;
 }
 
 public CSGameRules_OnRoundFreezeEnd()
