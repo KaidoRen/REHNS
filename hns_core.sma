@@ -1,5 +1,4 @@
 #include <amxmodx>
-#include <fun>
 #include <hns>
 #include <reapi>
 
