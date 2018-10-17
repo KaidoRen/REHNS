@@ -107,7 +107,7 @@ public OnMainParseEnd(INIParser: handle, bool: halted, data)
 
     new szPrefix[32]; strtok(szMap, szPrefix, charsmax(szPrefix), "", 0, '_', true);
     if (file_exists(fmt("%s/%s/maps/prefix_%s%s", g_szConfigsDir, g_szMainConfigDir, szPrefix, szConfigExtension))) {
-        ReadMapConfig(fmt("%s/%s/maps/%s%s", g_szConfigsDir, g_szMainConfigDir, szMap, szConfigExtension), szMap);
+        ReadMapConfig(fmt("%s/%s/maps/prefix_%s%s", g_szConfigsDir, g_szMainConfigDir, szMap, szConfigExtension), szMap);
     }
 }
 
