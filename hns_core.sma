@@ -1,6 +1,7 @@
 #include <amxmodx>
 #include <hns>
 #include <reapi>
+#include <hamsandwich>
 
 #pragma semicolon           1
 #pragma ctrlchar            '\'
@@ -25,11 +26,17 @@ public plugin_init()
     RegisterHookChain(RG_CSGameRules_OnRoundFreezeEnd, "CSGameRules_OnRoundFreezeEnd");
     RegisterHookChain(RG_CSGameRules_GiveC4, "CSGameRules_GiveC4", .post = false);
 
+    RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_knife", "CBaseWeapon_PrimaryAttack", .Post = false);
+    RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "CBaseWeapon_SecondaryAttack", .Post = false);
+    RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_knife", "CBaseWeapon_PrimaryAttackPost", .Post = true);
+    RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "CBaseWeapon_SecondaryAttackPost", .Post = true);
+
     g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
 }
 
 public CSGameRules_OnRoundFreezeStart()
 {
+    new iResult; ExecuteAllForwards(HNS_Freezetime, iResult, true);
     EnableHookChain(g_pResetMaxSpeed);
 }
 
@@ -46,11 +53,16 @@ public CBasePlayer_ResetMaxSpeed(const player)
 
 public CBasePlayer_GiveDefaultItems(const player)
 {
-    rg_give_item(player, "weapon_knife");
+    new iResult;
+    if (ExecuteAllForwards(HNS_Weapon_GiveKnife, iResult, false, player) && iResult == HNS_CONTINUE) {
+        rg_give_item(player, "weapon_knife");
+        ExecuteAllForwards(HNS_Weapon_GiveKnife, iResult, true, player);
+    }
 
-    if (get_member(player, m_iTeam) == TEAM_TERRORIST) {
+    if (get_member(player, m_iTeam) == TEAM_TERRORIST && ExecuteAllForwards(HNS_Weapon_GiveGrenades, iResult, false, player) && iResult == HNS_CONTINUE) {
         rg_give_item(player, "weapon_flashbang");
         rg_give_item(player, "weapon_smokegrenade");
+        ExecuteAllForwards(HNS_Weapon_GiveGrenades, iResult, true, player);
     }
 
     return HC_SUPERCEDE;
@@ -58,12 +70,47 @@ public CBasePlayer_GiveDefaultItems(const player)
 
 public CSGameRules_OnRoundFreezeEnd()
 {
+    new iResult; ExecuteAllForwards(HNS_StartRound, iResult, true);
     DisableHookChain(g_pResetMaxSpeed);
 }
 
 public CSGameRules_GiveC4()
 {
     return HC_SUPERCEDE;
+}
+
+public CBaseWeapon_PrimaryAttack(const this)
+{
+    new iPlayer = get_member(this, m_pPlayer);
+
+    if (get_member(iPlayer, m_iTeam) == TEAM_CT) {
+        ExecuteHamB(Ham_Weapon_SecondaryAttack, this);
+    }
+
+    return HAM_SUPERCEDE;
+}
+
+public CBaseWeapon_SecondaryAttack(const this)
+{
+    new iPlayer = get_member(this, m_pPlayer);
+
+    if (get_member(iPlayer, m_iTeam) == TEAM_TERRORIST) {
+        return HAM_SUPERCEDE;
+    }
+
+    return HAM_IGNORED;
+}
+
+public CBaseWeapon_PrimaryAttackPost(const this)
+{
+    new iResult, iPlayer = get_member(this, m_pPlayer);
+    ExecuteAllForwards(HNS_Weapon_KnifePrimaryAttackPost, iResult, true, iPlayer, this);
+}
+
+public CBaseWeapon_SecondaryAttackPost(const this)
+{
+    new iResult, iPlayer = get_member(this, m_pPlayer);
+    ExecuteAllForwards(HNS_Weapon_KnifeSecondaryAttackPost, iResult, true, iPlayer, this);
 }
 
 new g_szConfigsDir[128];
@@ -220,7 +267,7 @@ public Native__RegisterEvent(amx, params)
     enum { argFuncID = 1, argCallback, argPost, argDisable };
     new pForwardData[forwardStruct];
 
-    if (CF_Main_ParseStart > (pForwardData[forwardFuncID] = get_param(argFuncID)) > HNS_StartRound) {
+    if (HNS_Freezetime > (pForwardData[forwardFuncID] = get_param(argFuncID)) > CF_FindsSectionOrKey) {
         return INVALID_HANDLE;
     }
 
@@ -232,10 +279,13 @@ public Native__RegisterEvent(amx, params)
     pForwardData[forwardPluginID] = amx;
     pForwardData[forwardDisable] = bool: get_param(argDisable);
 
-    if (pForwardData[forwardFuncID] == CF_Main_ParseEnd || pForwardData[forwardFuncID] == CF_Map_ParseEnd) {
-        pForwardData[forwardPost] = true;
-    } else {
-        pForwardData[forwardPost] = bool: get_param(argPost);
+    switch (pForwardData[forwardFuncID]) {
+        case HNS_Freezetime, HNS_StartRound, CF_Main_ParseEnd, CF_Map_ParseEnd: {
+            pForwardData[forwardPost] = true;
+        }
+        default: {
+            pForwardData[forwardPost] = bool: get_param(argPost);
+        }
     }
 
     return ArrayPushArray(g_pForwards, pForwardData);
@@ -352,9 +402,12 @@ stock bool: ToggleState(const eventHandle, const bool: eventDisable)
     return true;
 }
 
-stock bool: ExecuteAllForwards(const {ConfigFunc, HNSFunc}: funcID, &result, bool: post, any: ...)
+stock bool: ExecuteAllForwards(const {HNSFunc, HNSWeaponFunc, ConfigFunc}: funcID, &result, bool: post, any: ...)
 {
     new pForwardData[forwardStruct], iIter, iResult;
+
+    result = HNS_CONTINUE;
+
     while (iIter < ArraySize(g_pForwards)) {
         ArrayGetArray(g_pForwards, iIter++, pForwardData);
 
@@ -367,8 +420,16 @@ stock bool: ExecuteAllForwards(const {ConfigFunc, HNSFunc}: funcID, &result, boo
         }
         
         switch (funcID) {
+            case CF_Map_ParseStart: {
+                enum { map = 3, config };
+                new szArg[2][256];
+
+                getarg_str(map, szArg[0], charsmax(szArg[])); callfunc_push_str(szArg[0]);
+                getarg_str(config, szArg[1], charsmax(szArg[])); callfunc_push_str(szArg[1]);
+            }
+
             case CF_FindsSectionOrKey: {
-                enum { section = 2, name, value }; 
+                enum { section = 3, name, value }; 
                 new szArg[2][32];
                 
                 callfunc_push_int(getarg(section));
@@ -376,8 +437,15 @@ stock bool: ExecuteAllForwards(const {ConfigFunc, HNSFunc}: funcID, &result, boo
                 getarg_str(value, szArg[1], charsmax(szArg[])); callfunc_push_str(szArg[1]);
             }
 
-            case HNS_StartRound: {
-                
+            case HNS_Weapon_GiveKnife, HNS_Weapon_GiveGrenades: {
+                enum { player = 3 };
+                callfunc_push_int(getarg(player));
+            }
+
+            case HNS_Weapon_KnifePrimaryAttackPost, HNS_Weapon_KnifeSecondaryAttackPost: {
+                enum { player = 3, ent };
+                callfunc_push_int(getarg(player));
+                callfunc_push_int(getarg(ent));
             }
         }
 
