@@ -9,7 +9,7 @@
 #define MAX_TIMER_VALUE     "60"
 
 new const PLUGIN[]          = "HNS Core";
-new const VERSION[]         = "1.0.2";
+new const VERSION[]         = "1.2.4";
 
 const IS_SECTION            = -2;
 
