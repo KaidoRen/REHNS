@@ -2,10 +2,13 @@
 
 ## Configuration
 
-| Config var                    | Default | Min | Max          | Description                                    |
-| :---------------------------- | :-----: | :-: | :----------: | :--------------------------------------------- |
-| enabled                       | 1       | 0   | 1            | Sets whether HNS is enabled or not <br/>`0` disabled <br/>`1` enabled |
+| Config var                    | Default | Min | Max          | Description                                                             |
+| :---------------------------- | :-----: | :-: | :----------: | :---------------------------------------------------------------------- |
+| enabled                       | 1       | 0   | 1            | Sets whether HNS is enabled or not <br/>`0` disabled <br/>`1` enabled   |
 | timer                         | 5       | 0   | 60           | Time before the start of the game (at this time the CT team is freezed) |
+| flashbangs                    | 2       | 0   | 99           | The number of flashbangs given to the player                            |
+| hegrenades                    | 0       | 0   | 99           | The number of hegrenades given to the player                            |
+| smokegrenades                 | 1       | 0   | 99           | The number of smokegrenades given to the player                         |
 
 ## Map configuration
 
