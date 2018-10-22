@@ -11,10 +11,19 @@
 new const PLUGIN[]          = "HNS Core";
 new const VERSION[]         = "1.2.4";
 
-const IS_SECTION            = -2;
-
 new Trie: g_pConfigAssoc, HookChain: g_pResetMaxSpeed,
 g_pCvarFreezetime;
+
+const CONFIGVAR_VALUE_MAX_LEN = 32;
+
+#define ADD_SECTION(%0) { %0, "", 0, 0 }
+#define ADD_CELL_VAR(%0,%1,%2,%3) { %0, %1, %2, %3 }
+enum varStruct { varname[32], varvalue[32], varmin, varmax };
+new const g_szConfigVars[][varStruct] = {
+    ADD_SECTION("core"),
+    ADD_CELL_VAR("enabled", "1", 0, 1),
+    ADD_CELL_VAR("timer", "5", 0, 60),
+};
 
 public plugin_init()
 {
@@ -33,6 +42,8 @@ public plugin_init()
     RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "CBaseWeapon_SecondaryAttackPost", .Post = true);
 
     g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
+
+    ConfigParser_INIT();
 }
 
 public CSGameRules_RestartRound()
@@ -117,7 +128,7 @@ public CBaseWeapon_SecondaryAttackPost(const this)
 new g_szConfigsDir[128];
 new const g_szMainConfigDir[] = "/hns";
 new const g_szMainConfigFile[] = "hns_config.ini";
-public plugin_cfg()
+ConfigParser_INIT()
 {
     new INIParser: pParser, iResult;
 
@@ -159,14 +170,16 @@ public OnMainParseEnd(INIParser: handle, bool: halted, data)
     }
 }
 
-public bool: OnParserFinds_KeyValuePair(INIParser: handle, const key[], value[])
+public bool: OnParserFinds_KeyValuePair(INIParser: handle, const key[], value[CONFIGVAR_VALUE_MAX_LEN])
 {
     new iResult;
-    if (equal(value, "enabled")) {
-        strclamp(value, strlen(value) + 1/*+ break symbol (\n)*/, value, false, true);
-    }
-    else if (equal(value, "timer")) {
-        strclamp(value, strlen(MAX_TIMER_VALUE) + 1/*+ break symbol (\n)*/, value, 0, str_to_num(MAX_TIMER_VALUE));
+
+    for (new i; i < sizeof g_szConfigVars; i++) {
+        if (equal(g_szConfigVars[i][varname], key)) {
+            server_print("value = %s", value);
+            strclamp(value, charsmax(value), value, g_szConfigVars[i][varmin], g_szConfigVars[i][varmax]);
+            server_print("value = %s", value);
+        }
     }
 
     if (TrieKeyExists(g_pConfigAssoc, key) && value[0] != EOS && ExecuteAllForwards(CF_FindsSectionOrKey, iResult, false, false, key, value)) {
@@ -195,9 +208,9 @@ Config__SetDefaultParams()
 {
     g_pConfigAssoc = TrieCreate();
 
-    TrieSetCell(g_pConfigAssoc, "core", IS_SECTION);
-    TrieSetString(g_pConfigAssoc, "enabled", "1");
-    TrieSetString(g_pConfigAssoc, "timer", "5");
+    for (new i; i < sizeof g_szConfigVars; i++) {
+        TrieSetString(g_pConfigAssoc, g_szConfigVars[i][varname], g_szConfigVars[i][varvalue]);
+    }
 }
 
 stock ReadMapConfig(const config[], const map[])
