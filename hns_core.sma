@@ -195,9 +195,7 @@ public bool: OnParserFinds_KeyValuePair(INIParser: handle, const key[], value[CO
 
     for (new i; i < sizeof g_szConfigVars; i++) {
         if (equal(g_szConfigVars[i][varname], key)) {
-            server_print("value = %s", value);
             strclamp(value, charsmax(value), value, g_szConfigVars[i][varmin], g_szConfigVars[i][varmax]);
-            server_print("value = %s", value);
         }
     }
 
