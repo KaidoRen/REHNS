@@ -9,7 +9,7 @@
 #define MAX_TIMER_VALUE     "60"
 
 new const PLUGIN[]          = "HNS Core";
-new const VERSION[]         = "1.2.4";
+new const VERSION[]         = "1.3.6";
 
 new Trie: g_pConfigAssoc, HookChain: g_pResetMaxSpeed,
 g_pCvarFreezetime;
@@ -23,6 +23,11 @@ new const g_szConfigVars[][varStruct] = {
     ADD_SECTION("core"),
     ADD_CELL_VAR("enabled", "1", 0, 1),
     ADD_CELL_VAR("timer", "5", 0, 60),
+
+    ADD_SECTION("weapons"),
+    ADD_CELL_VAR("flashbangs", "2", 0, 99),
+    ADD_CELL_VAR("hegrenades", "0", 0, 99),
+    ADD_CELL_VAR("smokegrenades", "1", 0, 99)
 };
 
 public plugin_init()
@@ -72,8 +77,22 @@ public CBasePlayer_GiveDefaultItems(const player)
     }
 
     if (get_member(player, m_iTeam) == TEAM_TERRORIST && ExecuteAllForwards(HNS_Weapon_GiveGrenades, iResult, false, player) && iResult == HNS_CONTINUE) {
-        rg_give_item(player, "weapon_flashbang");
-        rg_give_item(player, "weapon_smokegrenade");
+        new iValue = HNS_CF_GetAttributeCell("flashbangs");
+        if (iValue) {
+            rg_give_item(player, "weapon_flashbang");
+            rg_set_user_bpammo(player, WEAPON_FLASHBANG, iValue);
+        }
+
+        if ((iValue = HNS_CF_GetAttributeCell("hegrenades"))) {
+            rg_give_item(player, "weapon_hegrenade");
+            rg_set_user_bpammo(player, WEAPON_HEGRENADE, iValue);
+        }
+
+        if ((iValue = HNS_CF_GetAttributeCell("smokegrenades"))) {
+            rg_give_item(player, "weapon_smokegrenade");
+            rg_set_user_bpammo(player, WEAPON_SMOKEGRENADE, iValue);
+        }
+
         ExecuteAllForwards(HNS_Weapon_GiveGrenades, iResult, true, player);
     }
 
