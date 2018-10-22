@@ -9,13 +9,13 @@ enum HNSFunc
 {
 	/*
 	* Description:	-
-	* Params:		()
+	* Params:         ()
 	*/
 	HNS_Freezetime,
 
 	/*
 	* Description:	-
-	* Params:		()
+	* Params:         ()
 	*/
 	HNS_StartRound
 };
@@ -24,25 +24,25 @@ enum HNSWeaponFunc
 {
 	/*
 	* Description:	-
-	* Params:		(const player)
+	* Params:         (const player)
 	*/
 	HNS_Weapon_GiveKnife = BEGIN_FUNC_BASED_ON_PREVIOUS_SIZE(HNS),
 
 	/*
 	* Description:	-
-	* Params:		(const player)
+	* Params:         (const player)
 	*/
 	HNS_Weapon_GiveGrenades,
 
 	/*
 	* Description:	-
-	* Params:		(const player, const ent)
+	* Params:         (const player, const ent)
 	*/
 	HNS_Weapon_KnifePrimaryAttackPost,
 
 	/*
 	* Description:	-
-	* Params:		(const player, const ent)
+	* Params:         (const player, const ent)
 	*/
 	HNS_Weapon_KnifeSecondaryAttackPost
 };

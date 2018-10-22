@@ -8,9 +8,9 @@
 
 enum
 {
-	HNS_CONTINUE, 	// plugin didn't take any action
-	HNS_SUPERCEDE, 	// skip real function
-	HNS_BREAK	 	// skip real function, skip all forwards following after the current
+	HNS_CONTINUE,    // plugin didn't take any action
+	HNS_SUPERCEDE,   // skip real function
+	HNS_BREAK        // skip real function, skip all forwards following after the current
 };
 
 enum HNSEvent
@@ -21,10 +21,10 @@ enum HNSEvent
 /*
 * Registers an event triggering in game mode.
 *
-* @param funcID		The function to hook
+* @param funcID     The function to hook
 * @param callback   The forward to call
 * @param post       Whether or not to forward this in post
-* @param disable 	Turn off by default
+* @param disable    Turn off by default
 *
 * @return           Returns a event handle. Use HNS_EnableEvent/HNS_DisableEvent to toggle the forward
 */
@@ -33,7 +33,7 @@ native HNSEvent: HNS_RegisterEvent(const {ConfigFunc, HNSFunc, HNSWeaponFunc}: f
 /*
 * Stops a event hook from triggering.
 *
-* @param event		The event to stop
+* @param event      The event to stop
 *
 */
 native bool: HNS_EnableEvent(HNSEvent: event);
@@ -41,7 +41,7 @@ native bool: HNS_EnableEvent(HNSEvent: event);
 /*
 * Disable calling a function when an event is triggered..
 *
-* @param event		The event to enable
+* @param event      The event to enable
 *
 */
 native bool: HNS_DisableEvent(HNSEvent: event);
