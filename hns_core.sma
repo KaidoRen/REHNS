@@ -11,24 +11,10 @@
 new const PLUGIN[]          = "HNS Core";
 new const VERSION[]         = "1.3.6";
 
-new Trie: g_pConfigAssoc, HookChain: g_pResetMaxSpeed,
+new HookChain: g_pResetMaxSpeed,
 g_pCvarFreezetime;
 
-const CONFIGVAR_VALUE_MAX_LEN = 32;
-
-#define ADD_SECTION(%0) { %0, "", 0, 0 }
-#define ADD_CELL_VAR(%0,%1,%2,%3) { %0, %1, %2, %3 }
-enum varStruct { varname[32], varvalue[32], varmin, varmax };
-new const g_szConfigVars[][varStruct] = {
-    ADD_SECTION("core"),
-    ADD_CELL_VAR("enabled", "1", 0, 1),
-    ADD_CELL_VAR("timer", "5", 0, 60),
-
-    ADD_SECTION("weapons"),
-    ADD_CELL_VAR("flashbangs", "2", 0, 99),
-    ADD_CELL_VAR("hegrenades", "0", 0, 99),
-    ADD_CELL_VAR("smokegrenades", "1", 0, 99)
-};
+native Array: HNS_GetForwardsHandle();
 
 public plugin_init()
 {
@@ -46,9 +32,9 @@ public plugin_init()
     RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_knife", "CBaseWeapon_PrimaryAttackPost", .Post = true);
     RegisterHam(Ham_Weapon_SecondaryAttack, "weapon_knife", "CBaseWeapon_SecondaryAttackPost", .Post = true);
 
-    g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
+    HNS_RegisterEvent(CF_Main_ParseEnd, "Config_ParseEnd"), HNS_RegisterEvent(CF_Map_ParseEnd, "Config_ParseEnd");
 
-    ConfigParser_INIT();
+    g_pCvarFreezetime = get_cvar_pointer("mp_freezetime");
 }
 
 public CSGameRules_RestartRound()
@@ -144,119 +130,9 @@ public CBaseWeapon_SecondaryAttackPost(const this)
     ExecuteAllForwards(HNS_Weapon_KnifeSecondaryAttackPost, iResult, true, iPlayer, this);
 }
 
-new g_szConfigsDir[128];
-new const g_szMainConfigDir[] = "/hns";
-new const g_szMainConfigFile[] = "hns_config.ini";
-ConfigParser_INIT()
+public Config_ParseEnd()
 {
-    new INIParser: pParser, iResult;
-
-    get_localinfo("amxx_configsdir", g_szConfigsDir, charsmax(g_szConfigsDir));
-
-    Config__SetDefaultParams();
-    INI_SetReaders(pParser = INI_CreateParser(), "OnParserFinds_KeyValuePair", "OnParserFinds_NewSection");
-    INI_SetParseEnd(pParser, "OnMainParseEnd");
-    
-    if (ExecuteAllForwards(CF_Main_ParseStart, iResult, false) && iResult == HNS_CONTINUE && !INI_ParseFile(pParser, fmt("%s/%s/%s", g_szConfigsDir, g_szMainConfigDir, g_szMainConfigFile))) {
-        server_print("HNS: The configuration file (%s) is missing. The mod settings are set by default.", fmt("%s/%s/%s", g_szConfigsDir, g_szMainConfigDir, g_szMainConfigFile));
-    }
-
-    if (iResult == HNS_CONTINUE) {
-        ExecuteAllForwards(CF_Main_ParseStart, iResult, true);
-    }
-
-    INI_DestroyParser(pParser);
-}
-
-public OnMainParseEnd(INIParser: handle, bool: halted, data)
-{
-    new szMap[128];
-    new const szConfigExtension[] = ".ini";
-
-    ExecuteAllForwards(CF_Main_ParseEnd, data, true);
-
     set_pcvar_num(g_pCvarFreezetime, HNS_CF_GetAttributeCell("timer"));
-
-    get_mapname(szMap, charsmax(szMap));
-    if (file_exists(fmt("%s/%s/maps/%s%s", g_szConfigsDir, g_szMainConfigDir, szMap, szConfigExtension))) {
-        ReadMapConfig(fmt("%s/%s/maps/%s%s", g_szConfigsDir, g_szMainConfigDir, szMap, szConfigExtension), szMap);
-        return;
-    }
-
-    new szPrefix[32]; strtok(szMap, szPrefix, charsmax(szPrefix), "", 0, '_', true);
-    if (file_exists(fmt("%s/%s/maps/prefix_%s%s", g_szConfigsDir, g_szMainConfigDir, szPrefix, szConfigExtension))) {
-        ReadMapConfig(fmt("%s/%s/maps/prefix_%s%s", g_szConfigsDir, g_szMainConfigDir, szMap, szConfigExtension), szMap);
-    }
-}
-
-public bool: OnParserFinds_KeyValuePair(INIParser: handle, const key[], value[CONFIGVAR_VALUE_MAX_LEN])
-{
-    new iResult;
-
-    for (new i; i < sizeof g_szConfigVars; i++) {
-        if (equal(g_szConfigVars[i][varname], key)) {
-            strclamp(value, charsmax(value), value, g_szConfigVars[i][varmin], g_szConfigVars[i][varmax]);
-        }
-    }
-
-    if (TrieKeyExists(g_pConfigAssoc, key) && value[0] != EOS && ExecuteAllForwards(CF_FindsSectionOrKey, iResult, false, false, key, value)) {
-        if (iResult == HNS_CONTINUE) {
-            TrieSetString(g_pConfigAssoc, key, value);
-            ExecuteAllForwards(CF_FindsSectionOrKey, iResult, true, false, key, value);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-public bool: OnParserFinds_NewSection(INIParser: handle, const section[], bool:invalidTokens, bool: closeBracket, bool: extraTokens)
-{
-    new iResult;
-    if (!extraTokens && closeBracket && TrieKeyExists(g_pConfigAssoc, section) && ExecuteAllForwards(CF_FindsSectionOrKey, iResult, false, true, section) && iResult == HNS_CONTINUE) {
-        ExecuteAllForwards(CF_FindsSectionOrKey, iResult, true, true, section);
-        return true;
-    }
-
-    return false;
-}
-
-Config__SetDefaultParams()
-{
-    g_pConfigAssoc = TrieCreate();
-
-    for (new i; i < sizeof g_szConfigVars; i++) {
-        TrieSetString(g_pConfigAssoc, g_szConfigVars[i][varname], g_szConfigVars[i][varvalue]);
-    }
-}
-
-stock ReadMapConfig(const config[], const map[])
-{
-    new INIParser: pParser, iResult;
-
-    INI_SetReaders(pParser = INI_CreateParser(), "OnParserFinds_KeyValuePair", "OnParserFinds_NewSection");
-    INI_SetParseEnd(pParser, "OnMapParseEnd");
-    
-    if (ExecuteAllForwards(CF_Map_ParseStart, iResult, false, map, config) && iResult == HNS_CONTINUE && !INI_ParseFile(pParser, config)) {
-        server_print("HNS: The configuration file (%s) is missing. The mod settings are set by default.", config);
-    }
-
-    if (iResult == HNS_CONTINUE) {
-        ExecuteAllForwards(CF_Map_ParseStart, iResult, true, map, config);
-    }
-
-    INI_DestroyParser(pParser);
-}
-
-public OnMapParseEnd(INIParser: handle, bool: halted, data)
-{
-    ExecuteAllForwards(CF_Map_ParseEnd, data, true);
-    set_pcvar_num(g_pCvarFreezetime, HNS_CF_GetAttributeCell("timer"));
-}
-
-stock strclamp(buffer[], const len, const value[], min = cellmin, max = cellmax)
-{
-    return num_to_str(clamp(str_to_num(value), min, max), buffer, len);
 }
 
 // **********************************************************************
@@ -278,19 +154,16 @@ enum forwardStruct
     bool: forwardDisable
 } new Array: g_pForwards;
 
+public plugin_precache()
+{
+    g_pForwards = HNS_GetForwardsHandle();
+}
+
 public plugin_natives()
 {
     register_native("HNS_RegisterEvent",            "Native__RegisterEvent");
     register_native("HNS_DisableEvent",             "Native__DisableEvent");
     register_native("HNS_EnableEvent",              "Native__EnableEvent");
-
-    register_native("HNS_CF_RegisterAttribute",     "Native__CF_RegisterAttribute");
-    register_native("HNS_CF_AttributeExists",       "Native__CF_AttributeExists");
-    register_native("HNS_CF_GetAttributeString",    "Native__CF_GetAttributeString");
-    register_native("HNS_CF_GetAttributeCell",      "Native__CF_GetAttributeCell");
-    register_native("HNS_CF_GetAttributeFloat",     "Native__CF_GetAttributeFloat");
-
-    g_pForwards = ArrayCreate(forwardStruct);
 }
 
 public Native__RegisterEvent(amx, params)
@@ -332,95 +205,6 @@ public Native__EnableEvent(amx, params)
     return ToggleState(get_param(1), false);
 }
 
-
-public Native__CF_RegisterAttribute(amx, params)
-{
-    enum { attribute = 1, defvalue }
-
-    if (!g_pConfigAssoc) {
-        return false;
-    }
-
-    new szAttribute[MAX_ATTRIBUTE_SIZE], szDefaultValue[MAX_VALUE_SIZE];
-    get_string(attribute, szAttribute, charsmax(szAttribute));
-    get_string(defvalue, szDefaultValue, charsmax(szDefaultValue));
-
-    if (szAttribute[0] == EOS || szDefaultValue[0] == EOS) {
-        return false;
-    }
-
-    return bool: TrieSetString(g_pConfigAssoc, szAttribute, szDefaultValue);
-}
-
-public Native__CF_AttributeExists(amx, params)
-{
-    enum { attribute = 1 }
-
-    if (!g_pConfigAssoc) {
-        return false;
-    }
-
-    new szAttribute[MAX_ATTRIBUTE_SIZE];
-    get_string(attribute, szAttribute, charsmax(szAttribute));
-
-    return TrieKeyExists(g_pConfigAssoc, szAttribute);
-}
-
-public Native__CF_GetAttributeString(amx, params)
-{
-    enum { attribute = 1, output, outputsize }
-
-    if (!g_pConfigAssoc) {
-        return false;
-    }
-
-    new szAttribute[MAX_ATTRIBUTE_SIZE], szValue[MAX_VALUE_SIZE];
-    get_string(attribute, szAttribute, charsmax(szAttribute));
-
-    if (TrieGetString(g_pConfigAssoc, szAttribute, szValue, charsmax(szValue))) {
-        set_string(output, szValue, outputsize);
-        return true;
-    }
-
-    return false;
-}
-
-public Native__CF_GetAttributeCell(amx, params)
-{
-    enum { attribute = 1 }
-
-    if (!g_pConfigAssoc) {
-        return -1;
-    }
-
-    new szAttribute[MAX_ATTRIBUTE_SIZE], szValue[MAX_VALUE_SIZE];
-    get_string(attribute, szAttribute, charsmax(szAttribute));
-
-    if (TrieGetString(g_pConfigAssoc, szAttribute, szValue, charsmax(szValue))) {
-        return str_to_num(szValue);
-    }
-
-    return -1;
-}
-
-public Float: Native__CF_GetAttributeFloat(amx, params)
-{
-    enum { attribute = 1 }
-
-    if (!g_pConfigAssoc) {
-        return -1.0;
-    }
-
-    new szAttribute[MAX_ATTRIBUTE_SIZE], szValue[MAX_VALUE_SIZE];
-    get_string(attribute, szAttribute, charsmax(szAttribute));
-
-    if (TrieGetString(g_pConfigAssoc, szAttribute, szValue, charsmax(szValue))) {
-        return str_to_float(szValue);
-    }
-
-    return -1.0;
-}
-
 stock bool: ToggleState(const eventHandle, const bool: eventDisable)
 {
     new iEventHandle = eventHandle, pForwardData[forwardStruct];
@@ -433,7 +217,7 @@ stock bool: ToggleState(const eventHandle, const bool: eventDisable)
     return true;
 }
 
-stock bool: ExecuteAllForwards(const {HNSFunc, HNSWeaponFunc, ConfigFunc}: funcID, &result, bool: post, any: ...)
+stock bool: ExecuteAllForwards(const {HNSFunc, HNSWeaponFunc}: funcID, &result, bool: post, any: ...)
 {
     new pForwardData[forwardStruct], iIter, iResult;
 
