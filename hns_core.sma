@@ -9,7 +9,6 @@
 #define MAX_TIMER_VALUE     "60"
 
 new const PLUGIN[]          = "HNS Core";
-new const VERSION[]         = "1.3.6";
 
 new HookChain: g_pResetMaxSpeed,
 g_pCvarFreezetime;
@@ -18,7 +17,7 @@ native Array: HNS_GetForwardsHandle();
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, VERSION, "gamingEx");
+    register_plugin(PLUGIN, HNS_VERSION_STR, "gamingEx");
 
     g_pResetMaxSpeed = RegisterHookChain(RG_CBasePlayer_ResetMaxSpeed, "CBasePlayer_ResetMaxSpeed", .post = false);
     RegisterHookChain(RG_CBasePlayer_GiveDefaultItems, "CBasePlayer_GiveDefaultItems", .post = false);

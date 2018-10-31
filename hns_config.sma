@@ -2,7 +2,6 @@
 #include <hns>
 
 new const PLUGIN[] = "HNS: Config";
-new const VERSION[] = "1.3.6"
 
 const MAX_ATTRIBUTE_SIZE = 32;
 const MAX_VALUE_SIZE = 128;
@@ -26,7 +25,7 @@ new Trie: g_pConfigAssoc;
 
 public plugin_init()
 {
-    register_plugin(PLUGIN, VERSION, "gamingEx");
+    register_plugin(PLUGIN, HNS_VERSION_STR, "gamingEx");
 
     ConfigParser_INIT();
 }

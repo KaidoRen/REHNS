@@ -3,6 +3,7 @@
 #endif
 #define _hns_included
 
+#include <hns_version>
 #include <hns_const>
 #include <hns_config>
 
